@@ -1,7 +1,8 @@
+posit-sdk==0.7.0
 shiny
 python-dotenv
 tokenizers
-anthropic
+anthropic==0.40.0
 
 # For emails
 google-auth

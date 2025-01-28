@@ -1,0 +1,12 @@
+{
+    "http://localhost:3939": {
+        "server_url": "http://localhost:3939",
+        "filename": "/home/david/code/rstudio/connect-shiny-assistant/sample-app",
+        "app_url": "http://localhost:3939/content/03cbca64-2b48-417f-8db3-dfe9a7a9388e/",
+        "app_id": "03cbca64-2b48-417f-8db3-dfe9a7a9388e",
+        "app_guid": "03cbca64-2b48-417f-8db3-dfe9a7a9388e",
+        "title": "sample-app",
+        "app_mode": "python-shiny",
+        "app_store_version": 1
+    }
+}

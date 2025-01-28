@@ -2,3 +2,6 @@
 __pycache__
 scripts/credentials.json
 scripts/token.json
+
+shiny-app-bundle
+shiny-app-bundle.tar.gz

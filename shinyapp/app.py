@@ -6,6 +6,7 @@ import json
 import os
 import re
 from pathlib import Path
+import tarfile
 from typing import Any, Literal, TypedDict, cast
 from urllib.parse import parse_qs
 
@@ -18,14 +19,19 @@ from anthropic.types.beta.prompt_caching.prompt_caching_beta_message_param impor
 from app_utils import load_dotenv
 from htmltools import Tag
 
+from posit.connect import Client
 from shiny import App, Inputs, Outputs, Session, reactive, render, ui
 from shiny.ui._card import CardItem
 from shiny.ui._chat_normalize import AnthropicNormalizer
 
 # from signature import validate_email_server, validate_email_ui
 
+CONTENT_GUID = "03cbca64-2b48-417f-8db3-dfe9a7a9388e"
+CONTENT_URL = "http://localhost:8989/"
 
-SHINYLIVE_BASE_URL = "https://shinylive.io/"
+# TODO: This won't work if multiple viewers using the same shiny process
+SHINY_APP_DIR=(Path(__file__).parent).joinpath("shiny-app-bundle")
+SHINY_APP_BUNDLE=(Path(__file__).parent).joinpath("shiny-app-bundle.tar.gz")
 
 # Environment variables
 
@@ -33,6 +39,11 @@ load_dotenv()
 api_key = os.environ.get("ANTHROPIC_API_KEY")
 if api_key is None:
     raise ValueError("Please set the ANTHROPIC_API_KEY environment variable.")
+
+connect_api_key = os.environ.get("CONNECT_API_KEY")
+if connect_api_key is None:
+    raise ValueError("Please set the CONNECT_API_KEY environment variable.")
+
 
 google_analytics_id = os.environ.get("GOOGLE_ANALYTICS_ID", None)
 
@@ -48,10 +59,51 @@ def read_file(filename: Path | str, base_dir: Path = app_dir) -> str:
         return res
 
 
+async def apply_shinyapp_changes(files: list[FileContent] | None):
+    if files is not None:
+        for file in files:
+            with open(SHINY_APP_DIR / file["name"], "w") as f:
+                f.write(file["content"])
+
+
+def content_code_to_json() -> str:
+    content_code = dict()
+    for f in os.listdir(SHINY_APP_DIR):
+        if os.path.isfile(os.path.join(SHINY_APP_DIR, f)):
+            content_code[f] = read_file(f, base_dir=SHINY_APP_DIR)
+    return json.dumps(content_code)
+
+
+def open_content(guid: str, start_app: bool = False):
+    if os.path.exists(SHINY_APP_DIR):
+        import shutil
+        shutil.rmtree(SHINY_APP_DIR)
+    if os.path.exists(SHINY_APP_BUNDLE):
+        os.remove(SHINY_APP_BUNDLE)
+
+    client = Client()
+    content = client.content.get(guid)
+    bundle = content.bundles.get(content.bundle_id)
+    bundle.download(str(SHINY_APP_BUNDLE))
+    tar = tarfile.open(SHINY_APP_BUNDLE)
+    tar.extractall(path=SHINY_APP_DIR)
+
+    if start_app:
+        start_content()
+
+
+# TODO: We may need to CD first to make sure that the filewatcher doesn't get confused
+# TODO: Do we need to kill this process on shutdown?
+def start_content():
+    # NOTE: subprocess.run is blocking so we have to use Popen to avoid blocking gunicorn
+    import subprocess
+    subprocess.Popen(["shiny", "run", "--port", "8989",  "-r", os.path.join(SHINY_APP_DIR, "app.py")])
+
+
 app_prompt_template = read_file("app_prompt.md")
 
 app_prompt_language_specific = {
-    "r": read_file("app_prompt_r.md"),
+    # "r": read_file("app_prompt_r.md"),
     "python": read_file("app_prompt_python.md"),
 }
 
@@ -253,7 +305,8 @@ def server(input: Inputs, output: Outputs, session: Session):
     if len(restored_messages) == 0:
         restored_messages.insert(0, {"role": "assistant", "content": greeting})
 
-    if "files" in parsed_qs and parsed_qs["files"]:
+    if os.path.exists(SHINY_APP_DIR):
+        start_content()
         shinylive_panel_visible_smooth_transition.set(False)
         shinylive_panel_visible.set(True)
 
@@ -271,20 +324,9 @@ def server(input: Inputs, output: Outputs, session: Session):
         if not shinylive_panel_visible():
             return
 
-        if language() == "python":
-            url = (
-                SHINYLIVE_BASE_URL
-                + "py/editor/#code=NobwRAdghgtgpmAXGKAHVA6VBPMAaMAYwHsIAXOcpMMAXwF0g"
-            )
-        else:
-            url = (
-                SHINYLIVE_BASE_URL
-                + "r/editor/#code=NobwRAdghgtgpmAXGKAHVA6ASmANGAYwHsIAXOMpMMAXwF0g"
-            )
-
         return ui.tags.iframe(
             id="shinylive-panel",
-            src=url,
+            src=CONTENT_URL,
             style="flex: 1 1 auto;",
             allow="clipboard-write",
         )
@@ -308,7 +350,7 @@ code might ask you to modify the code. If it does, please modify the code. If th
 does not ask you to modify the code, then ignore the code.
 
 ```
-{input.editor_code()}
+{content_code_to_json()}
 ```
 
 { messages[-1]["content"] }
@@ -420,12 +462,13 @@ does not ask you to modify the code, then ignore the code.
         content = re.sub(
             '<SHINYAPP AUTORUN="[01]">', "<div class='assistant-shinyapp'>\n", content
         )
-        content = content.replace(
-            "</SHINYAPP>",
-            "\n<div class='run-code-button-container'>"
-            "<button class='run-code-button btn btn-outline-primary'>Run app →</button>"
-            "</div>\n</div>",
-        )
+        # TODO: Don't write changes to disk util confirmation is clicked
+        # content = content.replace(
+        #     "</SHINYAPP>",
+        #     "\n<div class='run-code-button-container'>"
+        #     "<button class='run-code-button btn btn-outline-primary'>Apply changes →</button>"
+        #     "</div>\n</div>",
+        # )
         content = re.sub(
             '\n<FILE NAME="(.*?)">',
             r"\n<div class='assistant-shinyapp-file'>\n<div class='filename'>\1</div>\n\n```",
@@ -444,9 +487,12 @@ does not ask you to modify the code, then ignore the code.
             return
         if files_in_shinyapp_tags() is None:
             return
-        await session.send_custom_message(
-            "set-shinylive-content", {"files": files_in_shinyapp_tags()}
-        )
+
+        await apply_shinyapp_changes(files_in_shinyapp_tags())
+
+        # await session.send_custom_message(
+        #     "set-shinylive-content", {"files": files_in_shinyapp_tags()}
+        # )
 
     @reactive.effect
     @reactive.event(input.show_shinylive)
