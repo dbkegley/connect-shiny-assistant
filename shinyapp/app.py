@@ -7,12 +7,12 @@ import os
 import re
 from pathlib import Path
 import tarfile
-from typing import Any, Literal, TypedDict, cast
+from typing import Any, Iterable, Literal, TypedDict, cast
 from urllib.parse import parse_qs
 
 from anthropic import APIStatusError, AsyncAnthropic, RateLimitError
 from anthropic.types import MessageParam
-from anthropic.types.beta.prompt_caching import RawPromptCachingBetaMessageStartEvent
+from anthropic.types.beta.prompt_caching import PromptCachingBetaToolParam, RawPromptCachingBetaMessageStartEvent
 from anthropic.types.beta.prompt_caching.prompt_caching_beta_message_param import (
     PromptCachingBetaMessageParam,
 )
@@ -20,6 +20,7 @@ from app_utils import load_dotenv
 from htmltools import Tag
 
 from posit.connect import Client
+from posit.connect.content import ContentItem
 from shiny import App, Inputs, Outputs, Session, reactive, render, ui
 from shiny.ui._card import CardItem
 from shiny.ui._chat_normalize import AnthropicNormalizer
@@ -50,6 +51,25 @@ google_analytics_id = os.environ.get("GOOGLE_ANALYTICS_ID", None)
 # email_sig_key = os.environ.get("EMAIL_SIGNATURE_KEY", None)
 
 app_dir = Path(__file__).parent
+
+
+def get_tools() -> Iterable[PromptCachingBetaToolParam]:
+    return [
+        {
+            "name": "search_content",
+            "description": "List Connect content that the current user is allowed to access",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "The city and state, e.g. San Francisco, CA",
+                    }
+                },
+                "required": ["location"],
+            },
+        },
+    ]
 
 
 # Read the contents of a file, where the base path defaults to current dir of this file.
@@ -90,6 +110,15 @@ def open_content(guid: str, start_app: bool = False):
 
     if start_app:
         start_content()
+
+
+def search_content(location: str) -> str:
+    print("searching content")
+    return json.dumps({"location": location})
+    # client = Client()
+    # content = client.content.find()
+    # print(content)
+    # return json.dumps(content)
 
 
 # TODO: We may need to CD first to make sure that the filewatcher doesn't get confused
@@ -361,6 +390,7 @@ does not ask you to modify the code, then ignore the code.
 
         await sync_latest_messages()
 
+
         # Create a response message stream
         try:
             response_stream = await llm().beta.prompt_caching.messages.create(
@@ -372,6 +402,7 @@ does not ask you to modify the code, then ignore the code.
                         "cache_control": {"type": "ephemeral"},
                     }
                 ],
+                tools=get_tools(),
                 messages=messages,
                 stream=True,
                 max_tokens=3000,
@@ -488,7 +519,7 @@ does not ask you to modify the code, then ignore the code.
         if files_in_shinyapp_tags() is None:
             return
 
-        await apply_shinyapp_changes(files_in_shinyapp_tags())
+        # await apply_shinyapp_changes(files_in_shinyapp_tags())
 
         # await session.send_custom_message(
         #     "set-shinylive-content", {"files": files_in_shinyapp_tags()}

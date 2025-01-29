@@ -1,0 +1,5 @@
+.env
+__pycache__
+
+shiny-app-bundle
+shiny-app-bundle.tar.gz
