@@ -12,6 +12,7 @@ from typing import Literal, TypedDict, cast
 from anthropic.types import MessageParam
 
 from chatlas.types import Content, ContentText
+import shiny
 from app_utils import load_dotenv
 from htmltools import Tag
 
@@ -75,23 +76,6 @@ def write_shinyapp_changes(files: list[FileContent] | None):
                 f.write(file["content"])
 
 
-async def search_content() -> str:
-    """Search for existing content on a Connect server that the current user is allowed to access"""
-    client = Client()
-    content = client.content.find()
-    return json.dumps(content)
-
-
-async def open_existing_content(guid: str) -> list[FileContent]:
-    """Download content from a Connect server and open it locally for live editing"""
-    print("opening existing content")
-    client = Client()
-    content = client.content.get(guid)
-    bundle = content.bundles.get(content.bundle_id)
-    bundle.download(str(SHINY_APP_BUNDLE))
-    tar = tarfile.open(SHINY_APP_BUNDLE)
-    tar.extractall(path=SHINY_APP_DIR)
-    return read_app_code()
 
 
 # def initialize_new_content(files: list[FileContent]):
@@ -201,6 +185,45 @@ def server(input: Inputs, output: Outputs, session: Session):
         None
     )
 
+    async def search_content() -> str:
+        """Search for content metadata on a Connect server that the current user is allowed to access"""
+        client = Client()
+        content = client.content.find()
+        return json.dumps(content)
+
+
+    shiny_app_guid: str | None = None
+    async def open_existing_content(guid: str) -> list[FileContent]:
+        """Open content from a Connect server and start it locally for live editing"""
+        print("opening existing content: ", guid)
+        client = Client()
+        content = client.content.get(guid)
+        bundle = content.bundles.get(content.bundle_id)
+        bundle.download(str(SHINY_APP_BUNDLE))
+        with tarfile.open(SHINY_APP_BUNDLE) as tar:
+            tar.extractall(path=SHINY_APP_DIR)
+        nonlocal shiny_app_guid
+        shiny_app_guid = guid
+        return read_app_code()
+
+
+    async def deploy_content() -> str:
+        """Deploy the modified shiny app to a Connect server"""
+        nonlocal shiny_app_guid
+        if shiny_app_guid is None:
+            raise Exception("Open an existing content item first")
+        guid = shiny_app_guid
+        print("deploying modified content: ", guid)
+        client = Client()
+        content = client.content.get(guid) # pyright: ignore
+        with tarfile.open(SHINY_APP_BUNDLE, "w:gz") as tar:
+            tar.add(SHINY_APP_DIR, arcname=os.path.sep)
+        bundle = content.bundles.create(str(SHINY_APP_BUNDLE))
+        task = bundle.deploy()
+        task.wait_for()
+        return task.output
+
+
     @reactive.calc
     def app_prompt() -> str:
         verbosity_instructions = {
@@ -237,6 +260,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         )
         model.register_tool(search_content)
         model.register_tool(open_existing_content)
+        model.register_tool(deploy_content)
         messages = chat.messages(format="anthropic",
                                  token_limits=(16000, 3000),
                                  transform_assistant=True)
