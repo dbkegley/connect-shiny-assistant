@@ -21,7 +21,6 @@ from shiny import App, Inputs, Outputs, Session, reactive, render, ui
 from shiny.ui._card import CardItem
 
 
-CONTENT_GUID = "03cbca64-2b48-417f-8db3-dfe9a7a9388e"
 CONTENT_URL = "http://localhost:8989/"
 
 # TODO: This won't work if multiple viewers using the same shiny process
@@ -241,7 +240,6 @@ def server(input: Inputs, output: Outputs, session: Session):
         messages = chat.messages(format="anthropic",
                                  token_limits=(16000, 3000),
                                  transform_assistant=True)
-        # messages = remove_consecutive_messages(messages)
 
         # TODO: put this in the prompt?
         app_code = shiny_app_files()
@@ -278,40 +276,9 @@ does not ask you to modify the code, then ignore the code.
             allow="clipboard-write",
         )
 
-    #
-    # ==================================================================================
-    # Code for finding content in the <SHINYAPP> tags and sending to the client
-    # ==================================================================================
-
-    # async def sync_latest_messages_locked():
-    #     async with reactive.lock():
-    #         await sync_latest_messages()
-    #
-    # last_message_sent = 0
-    # async def sync_latest_messages():
-    #     nonlocal last_message_sent
-    #
-    #     with reactive.isolate():
-    #         messages = chat.messages(
-    #             format="anthropic",
-    #             token_limits=None,
-    #             transform_user="all",
-    #             transform_assistant=False,
-    #         )
-    #
-    #     new_messages = messages[last_message_sent:]
-    #     last_message_sent = len(messages)
-    #     if len(new_messages) > 0:
-    #         print(f"Synchronizing {len(new_messages)} messages")
-    #         await session.send_custom_message(
-    #             "sync-chat-messages", {"messages": new_messages}
-    #         )
 
     @chat.transform_assistant_response
     async def transform_response(content: str, chunk: str, done: bool) -> str:
-        # if done:
-        #     asyncio.create_task(sync_latest_messages_locked())
-
         # TODO: This is inefficient because it does this processing for every chunk,
         # which means it will process the same content multiple times. It would be
         # better to do this incrementally as the content streams in.
@@ -368,7 +335,6 @@ does not ask you to modify the code, then ignore the code.
     @reactive.effect
     @reactive.event(input.show_shiny)
     async def force_shiny_open():
-        """open the shiny editor window for watching live changes to the shiny app"""
         # This is the client telling the server to show the shiny panel.
         # This is currently necessary (rather than the client having total
         # control) because the server uses a render.ui to create the shiny
@@ -394,26 +360,6 @@ does not ask you to modify the code, then ignore the code.
     @reactive.calc
     def language():
         return "python"
-
-
-# Remove any consecutive user or assistant messages. Only keep the last one in a
-# sequence. For example, if there are multiple user messages in a row, only keep the
-# last one. This is helpful for when the user sends multiple messages in a row, which
-# can happen if there was an error handling the previous message.
-def remove_consecutive_messages(
-    messages: tuple[MessageParam, ...],
-) -> tuple[MessageParam, ...]:
-    if len(messages) < 2:
-        return messages
-
-    new_messages: list[MessageParam] = []
-    for i in range(len(messages) - 1):
-        if messages[i]["role"] != messages[i + 1]["role"]:
-            new_messages.append(messages[i])
-
-    new_messages.append(messages[-1])
-
-    return tuple(new_messages)
 
 
 def transform_shinyapp_tag_contents_to_filecontents(input: str) -> list[FileContent]:
