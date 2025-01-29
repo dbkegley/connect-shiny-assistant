@@ -49,24 +49,6 @@ if connect_api_key is None:
 
 app_dir = Path(__file__).parent
 
-def get_tools() -> Iterable[PromptCachingBetaToolParam]:
-    return [
-        {
-            "name": "search_content",
-            "description": "List Connect content that the current user is allowed to access",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "The city and state, e.g. San Francisco, CA",
-                    }
-                },
-                "required": ["location"],
-            },
-        },
-    ]
-
 
 # Read the contents of a file, where the base path defaults to current dir of this file.
 def read_file(filename: Path | str, base_dir: Path = app_dir) -> str:
@@ -90,7 +72,8 @@ def content_code_to_json() -> str:
     return json.dumps(content_code)
 
 
-def open_content(guid: str, start_app: bool = False):
+async def open_content(guid: str, start_app: bool = False):
+    """Download content from a Connect server and start it locally for editing"""
     if os.path.exists(SHINY_APP_DIR):
         import shutil
         shutil.rmtree(SHINY_APP_DIR)
@@ -108,7 +91,8 @@ def open_content(guid: str, start_app: bool = False):
         start_content()
 
 
-def search_content() -> str:
+async def search_content() -> str:
+    """Search for content on a Connect server that the current user is allowed to access"""
     client = Client()
     content = client.content.find()
     return json.dumps(content)
@@ -265,6 +249,8 @@ def server(input: Inputs, output: Outputs, session: Session):
         # system_prompt=app_prompt(),
         max_tokens=3000,
     )
+    model.register_tool(search_content)
+    model.register_tool(open_content)
     chat = ui.Chat(
         id="ui_chat",
         messages=[{"role": "assistant", "content": greeting}],
