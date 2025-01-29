@@ -28,8 +28,6 @@ Shiny.initializedPromise.then(() => {
 
   // Receive custom message with app code and send to the shiny panel.
   Shiny.addCustomMessageHandler("set-shiny-content", async (message) => {
-    // Shiny.setInputValue("shiny_app_files", message.files);
-    //
     // It's critical that we NOT await ensureShinyPanel from within async
     // custom message handlers. You will get hangs because
     // ensureShinyPanel will not resolve until the shiny panel is
@@ -159,12 +157,12 @@ function setInputValue(inputId, value) {
 
 // Client mirror of server side chat history state
 // let chat_history = [];
-
+//
 // // Server sends this on new user input or assistant response
 // Shiny.addCustomMessageHandler("sync-chat-messages", (msg) => {
 //   chat_history.push(...msg.messages);
 // });
-
+//
 // $(document).on("shiny:disconnected", async () => {
 //   // On disconnect, we save all the state needed for restoration to the URL hash
 //   // and update the URL immediately. This way, the user can either hit Reload,
@@ -368,56 +366,60 @@ function showShinyPanel(smooth) {
     }, 500);
   }
 
+  // reload the iframe when it opens because the iframe is created before
+  // the shiny process starts
+  document.getElementById('shiny-panel').src = "http://localhost:8989";
+
   // document
   //   .querySelector(".bslib-sidebar-layout")
   //   .style.setProperty("--_sidebar-width", defaultSidebarWidth);
 }
 
-// =====================================================================================
-// Close popover when clicking outside
-// =====================================================================================
-
-function getTriggerElement(popoverElement) {
-  // Get all potential trigger elements
-  const triggers = document.querySelectorAll('[data-bs-toggle="popover"]');
-
-  // Iterate through triggers to find the one that matches our popover
-  for (let trigger of triggers) {
-    const popoverInstance = bootstrap.Popover.getInstance(trigger);
-    if (popoverInstance && popoverInstance.tip === popoverElement) {
-      return trigger;
-    }
-  }
-
-  // If no matching trigger is found
-  return null;
-}
-
-document.addEventListener("click", (e) => {
-  const popovers = document.querySelectorAll(".popover");
-  popovers.forEach((popover) => {
-    if (!popover.contains(e.target)) {
-      const trigger = getTriggerElement(popover);
-      if (trigger && !trigger.contains(e.target)) {
-        const popoverInstance = bootstrap.Popover.getInstance(trigger);
-        if (popoverInstance) {
-          popoverInstance.hide();
-        }
-      }
-    }
-  });
-});
-
-setTimeout(() => {
-  var popoverTriggerList = Array.from(
-    document.querySelectorAll('[data-bs-toggle="popover"]')
-  );
-
-  var popoverList = popoverTriggerList.map(function(popoverTriggerEl) {
-    // Only initialize popovers that haven't already be initialized (a bslib popover
-    // would already be initalized by this point, and re-initializing would break it).
-    if (bootstrap.Popover.getInstance(popoverTriggerEl) === null) {
-      return new bootstrap.Popover(popoverTriggerEl);
-    }
-  });
-}, 1000);
+// // =====================================================================================
+// // Close popover when clicking outside
+// // =====================================================================================
+//
+// function getTriggerElement(popoverElement) {
+//   // Get all potential trigger elements
+//   const triggers = document.querySelectorAll('[data-bs-toggle="popover"]');
+//
+//   // Iterate through triggers to find the one that matches our popover
+//   for (let trigger of triggers) {
+//     const popoverInstance = bootstrap.Popover.getInstance(trigger);
+//     if (popoverInstance && popoverInstance.tip === popoverElement) {
+//       return trigger;
+//     }
+//   }
+//
+//   // If no matching trigger is found
+//   return null;
+// }
+//
+// document.addEventListener("click", (e) => {
+//   const popovers = document.querySelectorAll(".popover");
+//   popovers.forEach((popover) => {
+//     if (!popover.contains(e.target)) {
+//       const trigger = getTriggerElement(popover);
+//       if (trigger && !trigger.contains(e.target)) {
+//         const popoverInstance = bootstrap.Popover.getInstance(trigger);
+//         if (popoverInstance) {
+//           popoverInstance.hide();
+//         }
+//       }
+//     }
+//   });
+// });
+//
+// setTimeout(() => {
+//   var popoverTriggerList = Array.from(
+//     document.querySelectorAll('[data-bs-toggle="popover"]')
+//   );
+//
+//   var popoverList = popoverTriggerList.map(function(popoverTriggerEl) {
+//     // Only initialize popovers that haven't already be initialized (a bslib popover
+//     // would already be initalized by this point, and re-initializing would break it).
+//     if (bootstrap.Popover.getInstance(popoverTriggerEl) === null) {
+//       return new bootstrap.Popover(popoverTriggerEl);
+//     }
+//   });
+// }, 1000);
