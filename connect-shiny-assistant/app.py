@@ -50,6 +50,9 @@ def delete_app_code():
     if os.path.exists(SHINY_APP_BUNDLE):
         os.remove(SHINY_APP_BUNDLE)
 
+# Delete app code 1x at startup
+delete_app_code()
+
 # Read the contents of a file, where the base path defaults to current dir of this file.
 def read_file(filename: Path | str, base_dir: Path = app_dir) -> str:
     with open(base_dir / filename, "r") as f:
@@ -90,7 +93,7 @@ def start_content():
     # NOTE: subprocess.run is blocking so we have to use Popen to avoid blocking gunicorn
     global process
     if process is None:
-        process = subprocess.Popen(["shiny", "run", "-r", "--port", "8989"], cwd=SHINY_APP_DIR)
+        process = subprocess.Popen(["shiny", "run", "-r", "--host", "0.0.0.0", "--port", "8989"], cwd=SHINY_APP_DIR)
         # TODO: actual synchronization
         time.sleep(5)
 
@@ -178,7 +181,6 @@ for child in app_ui.children:
 
 
 def server(input: Inputs, output: Outputs, session: Session):
-    delete_app_code()
     shiny_panel_visible = reactive.value(False)
     shiny_panel_visible_smooth_transition = reactive.value(True)
     shiny_app_files: reactive.Value[list[FileContent] | None] = reactive.Value(
