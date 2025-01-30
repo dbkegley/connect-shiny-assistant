@@ -1,6 +1,8 @@
 Connect Shiny Assistant
 ===============
 
+> Do not try to deploy this application to a real Connect server. It will not work.
+
 This repository contains code for Connect Shiny Assistant. It is a modified version of the
 original [`shiny-assistant`](https://github.com/posit-dev/shiny-assistant) but designed to run
 on a Posit Connect server rather than running the shiny applications in a browser with WASM/ShinyLive.
@@ -18,5 +20,7 @@ This project is built on top of many of the open source tools provided by Posit 
 - Only supports Shiny for Python, don't try to run R.
 - Modifications to the requirements.txt wont be reflected during local editing
   - The dependencies of the shiny app being edited must also be installed in _this apps_ runtime environment
-- All sub-processes run on `localhost:8989` via the following command: `shiny run -r --port 8989 ./app.py`
+- All sub-processes run on `localhost:8989` via the following command: `shiny run -r --host 0.0.0.0 --port 8989 ./app.py`
+  - This means that your browser must be able to reach `$CONNECT_HOST:8989` on `localhost:8989` in order for the
+    iframe to load.
 - You must convince the LLM to print the source code in order to open the editor iframe

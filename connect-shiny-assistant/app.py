@@ -93,6 +93,7 @@ def start_content():
     # NOTE: subprocess.run is blocking so we have to use Popen to avoid blocking gunicorn
     global process
     if process is None:
+        # TODO: This causes orphaned procs on shutdown
         process = subprocess.Popen(["shiny", "run", "-r", "--host", "0.0.0.0", "--port", "8989"], cwd=SHINY_APP_DIR)
         # TODO: actual synchronization
         time.sleep(5)
@@ -353,6 +354,8 @@ does not ask you to modify the code, then ignore the code.
         write_shinyapp_changes(shiny_app_files())
         start_content()
         shiny_panel_visible.set(True)
+        print("reloading iframe")
+        await session.send_custom_message("reload-shiny-panel", {})
         # await session.send_custom_message(
         #     "set-shiny-content", {"files": shiny_app_files()}
         # )
@@ -373,7 +376,7 @@ does not ask you to modify the code, then ignore the code.
     @reactive.event(shiny_panel_visible)
     async def send_show_shiny_panel_message():
         if shiny_panel_visible():
-            print("reloading iframe")
+            print("showing iframe")
             await session.send_custom_message(
                 "show-shiny-panel",
                 {

@@ -47,6 +47,11 @@ Shiny.initializedPromise.then(() => {
       showShinyPanel(message.smooth);
     }
   });
+
+  Shiny.addCustomMessageHandler("reload-shiny-panel", (message) => {
+    console.log("reloading iframe")
+    document.getElementById('shiny-panel').src = "http://localhost:8989";
+  });
 });
 
 // Listener for "Run code" buttons.
