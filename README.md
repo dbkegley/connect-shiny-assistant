@@ -1,6 +1,7 @@
 Connect Shiny Assistant
 ===============
 
+> [!CAUTION]
 > Do not try to deploy this application to a real Connect server. It will not work.
 
 This repository contains code for Connect Shiny Assistant. It is a modified version of the
@@ -16,7 +17,7 @@ This project is built on top of many of the open source tools provided by Posit 
 
 ### Demo
 
-[!(llm-hackathon.mp4)](https://github.com/user-attachments/assets/412747c2-f022-4b7d-bc2b-7a0a10ebc90c)
+[!(llm-hackathon)](https://github.com/user-attachments/assets/412747c2-f022-4b7d-bc2b-7a0a10ebc90c)
 
 
 ### Limitations (there are many):
