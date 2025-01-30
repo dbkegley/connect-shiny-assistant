@@ -13,6 +13,12 @@ This project is built on top of many of the open source tools provided by Posit 
 - <https://github.com/posit-dev/chatlas>
 - <https://github.com/posit-dev/posit-sdk-py>
 
+
+### Demo
+
+[!(llm-hackathon.mp4)](https://github.com/user-attachments/assets/412747c2-f022-4b7d-bc2b-7a0a10ebc90c)
+
+
 ### Limitations (there are many):
 
 - This version of the assistant is single-tenant. Don't try to edit more than 1 deployed application at a time.

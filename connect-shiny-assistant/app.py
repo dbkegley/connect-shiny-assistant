@@ -12,7 +12,6 @@ from typing import Literal, TypedDict, cast
 from anthropic.types import MessageParam
 
 from chatlas.types import Content, ContentText
-import shiny
 from app_utils import load_dotenv
 from htmltools import Tag
 
@@ -96,7 +95,7 @@ def start_content():
         # TODO: This causes orphaned procs on shutdown
         process = subprocess.Popen(["shiny", "run", "-r", "--host", "0.0.0.0", "--port", "8989"], cwd=SHINY_APP_DIR)
         # TODO: actual synchronization
-        time.sleep(5)
+        time.sleep(7)
 
 
 def stop_content():
