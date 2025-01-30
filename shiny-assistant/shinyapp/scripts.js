@@ -14,12 +14,10 @@ Shiny.initializedPromise.then(() => {
   chatMessagesContainer().addEventListener(
     "shiny-chat-input-sent",
     async (e) => {
-      // We don't need this because the input is coming from files on the server, not from the iframe on the client
-      //
-      // const fileContents = await requestFileContentsFromWindow();
-      // Shiny.setInputValue("editor_code", fileContents, {
-      //   priority: "event",
-      // });
+      const fileContents = await requestFileContentsFromWindow();
+      Shiny.setInputValue("editor_code", fileContents, {
+        priority: "event",
+      });
       // This can be removed once we fix
       // https://github.com/posit-dev/py-shiny/issues/1600
       Shiny.setInputValue("message_trigger", messageTriggerCounter++);
@@ -28,8 +26,6 @@ Shiny.initializedPromise.then(() => {
 
   // Receive custom message with app code and send to the shinylive panel.
   Shiny.addCustomMessageHandler("set-shinylive-content", async (message) => {
-    // Shiny.setInputValue("shiny_app_files", message.files);
-    //
     // It's critical that we NOT await ensureShinylivePanel from within async
     // custom message handlers. You will get hangs because
     // ensureShinylivePanel will not resolve until the shinylive panel is
@@ -123,7 +119,7 @@ function postMessageAndWaitForReply(targetWindow, message) {
 const LANGUAGE_INPUT_ID = "language_switch";
 const VERBOSITY_INPUT_ID = "verbosity";
 
-$(document).on("shiny:sessioninitialized", function() {
+$(document).on("shiny:sessioninitialized", function () {
   // Checkbox state is stored as a string in localstorage
   const languageSavedState = localStorage.getItem(LANGUAGE_INPUT_ID) === "true";
   if (languageSavedState !== null) {
@@ -136,7 +132,7 @@ $(document).on("shiny:sessioninitialized", function() {
   }
 });
 
-$(document).on("shiny:inputchanged", function(e) {
+$(document).on("shiny:inputchanged", function (e) {
   if ([LANGUAGE_INPUT_ID, VERBOSITY_INPUT_ID].includes(e.name)) {
     localStorage.setItem(e.name, e.value);
   }
@@ -413,7 +409,7 @@ setTimeout(() => {
     document.querySelectorAll('[data-bs-toggle="popover"]')
   );
 
-  var popoverList = popoverTriggerList.map(function(popoverTriggerEl) {
+  var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
     // Only initialize popovers that haven't already be initialized (a bslib popover
     // would already be initalized by this point, and re-initializing would break it).
     if (bootstrap.Popover.getInstance(popoverTriggerEl) === null) {
